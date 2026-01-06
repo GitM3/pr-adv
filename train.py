@@ -14,9 +14,9 @@ from load import (
 )
 
 
-SAMPLES = 50
-BATCH_SIZE = 4
-EPOCHS = 10
+SAMPLES = 10
+BATCH_SIZE = 5
+EPOCHS = 25
 PREVIEW_DIR = os.path.join(
     "output", f"{datetime.datetime.now():%Y_%m_%d_%H_%M}-preview"
 )
@@ -64,6 +64,24 @@ class PreviewCallback(tf.keras.callbacks.Callback):
         plt.close(fig)
 
 
+def dice_loss(y_true, y_pred, smooth=1e-6):
+    y_true = tf.squeeze(y_true, axis=-1)
+    y_true = tf.cast(y_true, tf.int32)
+    y_true = tf.one_hot(y_true, depth=OUTPUT_CHANNELS)
+    y_pred = tf.nn.softmax(y_pred, axis=-1)
+
+    y_true = tf.cast(y_true, tf.float32)
+    intersection = tf.reduce_sum(y_true * y_pred, axis=[0, 1, 2])
+    denominator = tf.reduce_sum(y_true + y_pred, axis=[0, 1, 2])
+    dice = (2.0 * intersection + smooth) / (denominator + smooth)
+    return 1.0 - tf.reduce_mean(dice)
+
+
+def combo_loss(y_true, y_pred):
+    ce = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    return 0.5 * ce(y_true, y_pred) + 0.5 * dice_loss(y_true, y_pred)
+
+
 def main():
     dataset = create_dataset(
         DATA_DIR, split="train", shuffle=False, image_size=IMAGE_SIZE
@@ -82,8 +100,8 @@ def main():
 
     model = unet_model(OUTPUT_CHANNELS, IMAGE_SIZE)
     model.compile(
-        optimizer="adam",
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        optimizer=tf.keras.optimizers.Adam(),
+        loss=combo_loss,
     )
 
     steps_per_epoch = max(1, math.ceil(SAMPLES / BATCH_SIZE))

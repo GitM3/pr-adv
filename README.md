@@ -24,3 +24,4 @@ Using 5 connections (Inspected model.summary())
 
 Upsampling from their pix2pix example implemented [here](https://github.com/tensorflow/examples/blob/b5a8265e0b655001eaa859e7bd8ac9b4e03f3ce8/tensorflow_examples/models/pix2pix/pix2pix.py#L220C66-L220C71).
 
+Class collapse. Need to handle class imbalances, tutorial uses class weights for resampling, but maybe a better loss function?
