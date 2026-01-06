@@ -138,7 +138,8 @@ def display_training_sample(dataset):
         plt.show()
 
 
-dataset = create_dataset(DATA_DIR)
-display_training_sample(dataset)
-model = unet_model(OUTPUT_CHANNELS, IMAGE_SIZE)
-model.summary()
+if __name__ == "__main__":
+    dataset = create_dataset(DATA_DIR)
+    display_training_sample(dataset)
+    model = unet_model(OUTPUT_CHANNELS, IMAGE_SIZE)
+    model.summary()
