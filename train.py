@@ -36,6 +36,17 @@ class PreviewCallback(tf.keras.callbacks.Callback):
         image = tf.keras.utils.array_to_img(self.sample_image[0])
         true_mask = tf.squeeze(self.sample_mask[0])
         pred_mask = tf.squeeze(pred_mask[0])
+        true_unique = tf.unique(tf.reshape(true_mask, [-1])).y.numpy().tolist()
+        pred_unique = tf.unique(tf.reshape(pred_mask, [-1])).y.numpy().tolist()
+        pred_min = float(tf.reduce_min(pred).numpy())
+        pred_max = float(tf.reduce_max(pred).numpy())
+        pred_mean = float(tf.reduce_mean(pred).numpy())
+        print(
+            f"epoch {epoch + 1} debug:"
+            f" true_unique={sorted(true_unique)}"
+            f" pred_unique={sorted(pred_unique)}"
+            f" logits(min/mean/max)={pred_min:.4f}/{pred_mean:.4f}/{pred_max:.4f}"
+        )
 
         fig, axes = plt.subplots(1, 3, figsize=(9, 3))
         for ax in axes:
