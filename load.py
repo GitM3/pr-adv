@@ -10,11 +10,11 @@ DATA_DIR = os.path.expanduser("~/Development/08_ADV/PhenoBench")
 IMAGE_SIZE = (512, 512)
 OUTPUT_CHANNELS = 5
 SKIP_LAYER_NAMES = [
-    "activation",     # 256x256
-    "re_lu",          # 128x128
-    "re_lu_3",        # 64x64
-    "activation_2",   # 32x32
-    "activation_17",  # 16x16
+    "block_1_expand_relu",   # 256x256
+    "block_3_expand_relu",   # 128x128
+    "block_6_expand_relu",   # 64x64
+    "block_13_expand_relu",  # 32x32
+    "block_16_project",      # 16x16
 ]
 
 def _iter_samples(data, image_key="image", mask_key="semantics"):
@@ -89,10 +89,9 @@ def _upsample(filters, size):
 def unet_model(output_channels, image_size=IMAGE_SIZE):
     inputs = tf.keras.layers.Input(shape=(image_size[0], image_size[1], 3))
 
-    base_model = tf.keras.applications.MobileNetV3Small(
+    base_model = tf.keras.applications.MobileNetV2(
         input_shape=(image_size[0], image_size[1], 3), include_top=False
     )
-    #base_model.summary() 
     base_model_outputs = [base_model.get_layer(name).output for name in SKIP_LAYER_NAMES]
     down_stack = tf.keras.Model(inputs=base_model.input, outputs=base_model_outputs)
     down_stack.trainable = False
