@@ -7,6 +7,15 @@ import tensorflow as tf
 from pprint import pprint
 
 DATA_DIR = os.path.expanduser("~/Development/08_ADV/PhenoBench")
+IMAGE_SIZE = (512, 512)
+OUTPUT_CHANNELS = 5
+SKIP_LAYER_NAMES = [
+    "activation",     # 256x256
+    "re_lu",          # 128x128
+    "re_lu_3",        # 64x64
+    "activation_2",   # 32x32
+    "activation_17",  # 16x16
+]
 
 def _iter_samples(data, image_key="image", mask_key="semantics"):
     for idx in range(len(data)):
@@ -34,9 +43,9 @@ def create_dataset(
     root_dir,
     split="train",
     mask_key="semantics",
-    image_size=(128, 128),
-    shuffle=True,
-    seed=42,
+    image_size=IMAGE_SIZE,
+    shuffle=False, # TODO: Remember to toggle again after testing
+    seed=69,
 ):
     data = PhenoBench(root_dir, split=split, target_types=[mask_key])
     output_signature = (
@@ -59,6 +68,56 @@ def create_dataset(
     )
     return dataset
 
+# From pix2pix, no dropout, batch norm
+def _upsample(filters, size):
+    initializer = tf.random_normal_initializer(0.0, 0.02)
+    return tf.keras.Sequential(
+        [
+            tf.keras.layers.Conv2DTranspose(
+                filters,
+                size,
+                strides=2,
+                padding="same",
+                kernel_initializer=initializer,
+                use_bias=False,
+            ),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.ReLU(),
+        ]
+    )
+
+def unet_model(output_channels, image_size=IMAGE_SIZE):
+    inputs = tf.keras.layers.Input(shape=(image_size[0], image_size[1], 3))
+
+    base_model = tf.keras.applications.MobileNetV3Small(
+        input_shape=(image_size[0], image_size[1], 3), include_top=False
+    )
+    #base_model.summary() 
+    base_model_outputs = [base_model.get_layer(name).output for name in SKIP_LAYER_NAMES]
+    down_stack = tf.keras.Model(inputs=base_model.input, outputs=base_model_outputs)
+    down_stack.trainable = False
+
+    up_stack = [
+        _upsample(512, 3),
+        _upsample(256, 3),
+        _upsample(128, 3),
+        _upsample(64, 3),
+    ]
+
+    skips = down_stack(inputs)
+    x = skips[-1]
+    skips = reversed(skips[:-1])
+
+    for up, skip in zip(up_stack, skips):
+        x = up(x)
+        x = tf.keras.layers.Concatenate()([x, skip])
+
+    last = tf.keras.layers.Conv2DTranspose(
+        filters=output_channels, kernel_size=3, strides=2, padding="same"
+    )
+    x = last(x)
+
+    return tf.keras.Model(inputs=inputs, outputs=x)
 
 def display_training_sample(dataset):
     for image, mask in dataset.take(1):
@@ -79,5 +138,7 @@ def display_training_sample(dataset):
         plt.show()
 
 
-dataset =  create_dataset(DATA_DIR)
+dataset = create_dataset(DATA_DIR)
 display_training_sample(dataset)
+model = unet_model(OUTPUT_CHANNELS, IMAGE_SIZE)
+model.summary()
