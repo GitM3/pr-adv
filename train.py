@@ -10,11 +10,13 @@ from load import (
     IMAGE_SIZE,
     OUTPUT_CHANNELS,
     create_dataset,
+    create_train_val,
     unet_model,
 )
 
 
-SAMPLES = 50
+TRAIN_SAMPLES = 50
+VAL_SAMPLES = 20
 BATCH_SIZE = 4
 EPOCHS = 10
 PREVIEW_DIR = os.path.join(
@@ -33,11 +35,9 @@ class PreviewCallback(tf.keras.callbacks.Callback):
         pred = self.model(self.sample_image, training=False)
         pred_mask = tf.argmax(pred, axis=-1)
 
-        image = tf.keras.utils.array_to_img(self.sample_image[0])
-        true_mask = tf.squeeze(self.sample_mask[0])
-        pred_mask = tf.squeeze(pred_mask[0])
-        true_unique = tf.unique(tf.reshape(true_mask, [-1])).y.numpy().tolist()
-        pred_unique = tf.unique(tf.reshape(pred_mask, [-1])).y.numpy().tolist()
+        true_mask = tf.squeeze(self.sample_mask, axis=-1)
+        true_unique = tf.unique(tf.reshape(true_mask[0], [-1])).y.numpy().tolist()
+        pred_unique = tf.unique(tf.reshape(pred_mask[0], [-1])).y.numpy().tolist()
         pred_min = float(tf.reduce_min(pred).numpy())
         pred_max = float(tf.reduce_max(pred).numpy())
         pred_mean = float(tf.reduce_mean(pred).numpy())
@@ -48,15 +48,22 @@ class PreviewCallback(tf.keras.callbacks.Callback):
             f" logits(min/mean/max)={pred_min:.4f}/{pred_mean:.4f}/{pred_max:.4f}"
         )
 
-        fig, axes = plt.subplots(1, 3, figsize=(9, 3))
-        for ax in axes:
-            ax.axis("off")
-        axes[0].set_title("Input")
-        axes[0].imshow(image)
-        axes[1].set_title("True")
-        axes[1].imshow(true_mask, cmap="viridis", vmin=0)
-        axes[2].set_title("Pred")
-        axes[2].imshow(pred_mask, cmap="viridis", vmin=0)
+        rows = int(self.sample_image.shape[0] or 1)
+        rows = min(2, rows)
+        fig, axes = plt.subplots(rows, 3, figsize=(9, 3 * rows))
+        if rows == 1:
+            axes = [axes]
+        for row in range(rows):
+            for ax in axes[row]:
+                ax.axis("off")
+            if row == 0:
+                axes[row][0].set_title("Input")
+                axes[row][1].set_title("True")
+                axes[row][2].set_title("Pred")
+            image = tf.keras.utils.array_to_img(self.sample_image[row])
+            axes[row][0].imshow(image)
+            axes[row][1].imshow(true_mask[row], cmap="viridis", vmin=0)
+            axes[row][2].imshow(pred_mask[row], cmap="viridis", vmin=0)
 
         path = os.path.join(self.output_dir, f"epoch_{epoch + 1:03d}.png")
         fig.tight_layout()
@@ -64,19 +71,25 @@ class PreviewCallback(tf.keras.callbacks.Callback):
         plt.close(fig)
 
 
+def compute_steps(sample_count, batch_size):
+    return max(1, math.ceil(sample_count / batch_size))
+
 def main():
-    dataset = create_dataset(
-        DATA_DIR, split="train", shuffle=False, image_size=IMAGE_SIZE
-    ).take(SAMPLES)
-    dataset = dataset.cache().batch(BATCH_SIZE).repeat()
+    train, val = create_train_val(
+        DATA_DIR,
+        image_size=IMAGE_SIZE,
+        batch_size=BATCH_SIZE,
+        train_limit=TRAIN_SAMPLES,
+        val_limit=VAL_SAMPLES,
+    )
 
     preview_sample = next(
         iter(
             create_dataset(
                 DATA_DIR, split="train", shuffle=False, image_size=IMAGE_SIZE
             )
-            .take(1)
-            .batch(1)
+            .take(2)
+            .batch(2)
         )
     )
 
@@ -84,14 +97,18 @@ def main():
     model.compile(
         optimizer="adam",
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="pixel_acc")],
     )
 
-    steps_per_epoch = max(1, math.ceil(SAMPLES / BATCH_SIZE))
+    steps_per_epoch = compute_steps(TRAIN_SAMPLES, BATCH_SIZE)
+    validation_steps = compute_steps(VAL_SAMPLES, BATCH_SIZE)
 
     model.fit(
-        dataset,
+        train,
         epochs=EPOCHS,
         steps_per_epoch=steps_per_epoch,
+        validation_data=val,
+        validation_steps=validation_steps,
         callbacks=[PreviewCallback(preview_sample, PREVIEW_DIR)],
         verbose=2,
     )

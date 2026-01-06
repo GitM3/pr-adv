@@ -118,6 +118,63 @@ def unet_model(output_channels, image_size=IMAGE_SIZE):
 
     return tf.keras.Model(inputs=inputs, outputs=x)
 
+
+class Augment(tf.keras.layers.Layer):
+    def __init__(self, seed=42):
+        super().__init__()
+        self.augment_inputs = tf.keras.layers.RandomFlip(
+            mode="horizontal", seed=seed
+        )
+        self.augment_labels = tf.keras.layers.RandomFlip(
+            mode="horizontal", seed=seed
+        )
+
+    def call(self, inputs, labels):
+        inputs = self.augment_inputs(inputs)
+        labels = self.augment_labels(labels)
+        return inputs, labels
+
+
+def create_train_val(
+    root_dir,
+    image_size=IMAGE_SIZE,
+    batch_size=8,
+    buffer_size=1000,
+    train_limit=None,
+    val_limit=None,
+    seed=42,
+):
+    train = create_dataset(
+        root_dir,
+        split="train",
+        image_size=image_size,
+        shuffle=False,
+        seed=seed,
+    )
+    val = create_dataset(
+        root_dir,
+        split="val",
+        image_size=image_size,
+        shuffle=False,
+        seed=seed,
+    )
+
+    if train_limit is not None:
+        train = train.take(train_limit)
+    if val_limit is not None:
+        val = val.take(val_limit)
+
+    train = (
+        train.cache()
+        .shuffle(buffer_size)
+        .batch(batch_size)
+        .repeat()
+        .map(Augment(seed=seed), num_parallel_calls=tf.data.AUTOTUNE)
+        .prefetch(tf.data.AUTOTUNE)
+    )
+    val = val.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    return train, val
+
 def display_training_sample(dataset):
     for image, mask in dataset.take(1):
         if image.shape.rank == 4:
