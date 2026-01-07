@@ -25,4 +25,16 @@ Using 5 connections (Inspected model.summary())
 The above did not work, I need to inspect model more carefully.
 
 Upsampling from their pix2pix example implemented [here](https://github.com/tensorflow/examples/blob/b5a8265e0b655001eaa859e7bd8ac9b4e03f3ce8/tensorflow_examples/models/pix2pix/pix2pix.py#L220C66-L220C71).
+# Validation
+Using devkit:
+- `python validate.py  --weights weights/2026_01_07_11_17/weights_epoch_010.weights.h5`
 
+- Results for no augmentation and 500 Samples:
+Semantic metrics:
+  soil: 97.6
+  crop: 76.06
+  weed: 20.47
+  mIoU: 64.71
+
+  # Upgrading to MobileNetV3
+  https://ieeexplore.ieee.org/document/9522652
