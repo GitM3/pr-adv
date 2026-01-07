@@ -2,12 +2,13 @@
 - Implement semantic leaf segmentation model.
 - PhenoBench: https://www.phenobench.org/benchmarks.html
 ## Milestones
-- [ ] Load dataset into tensorflow format.
-- [ ] Implement basic U-Net.
-- [ ] Overfit 5 images to see if works
-- [ ] Train for 1-2 epochs check functionality, etc.
-- [ ] Visualise training.
-- [ ] Evaluate using eval toolkit
+- [X] Load dataset into tensorflow format.
+- [X] Implement basic U-Net.
+- [X] Overfit 5 images to see if works
+- [X] Train for 1-2 epochs check functionality, etc.
+- [X] Visualise training.
+- [X] Evaluate using eval toolkit
+- [ ] Try MobileNetV3 integration
 ## DataLoading
 - https://github.com/PRBonn/phenobench/blob/main/phenobench_tutorial.ipynb
 - Classes: `1 crop, 2 weed, 3 partial crop, 4 partial weeds`
@@ -21,6 +22,7 @@ Using 5 connections (Inspected model.summary())
 - re_lu_3 (64x64)
 - activation_2 (32x32)
 - activation_17 
+The above did not work, I need to inspect model more carefully.
 
 Upsampling from their pix2pix example implemented [here](https://github.com/tensorflow/examples/blob/b5a8265e0b655001eaa859e7bd8ac9b4e03f3ce8/tensorflow_examples/models/pix2pix/pix2pix.py#L220C66-L220C71).
 
