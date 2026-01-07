@@ -38,3 +38,5 @@ Semantic metrics:
 
   # Upgrading to MobileNetV3
   https://ieeexplore.ieee.org/document/9522652
+  <img width="820" height="390" alt="image" src="https://github.com/user-attachments/assets/3223227d-056f-4130-8c16-7df070c02427" />
+
