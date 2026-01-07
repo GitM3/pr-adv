@@ -1,21 +1,23 @@
-from phenobench import PhenoBench
-import matplotlib.pyplot as plt
-from phenobench.visualization import draw_semantics
-import numpy as np
 import os
-import tensorflow as tf
 from pprint import pprint
 
-DATA_DIR = os.path.expanduser("~/Development/08_ADV/PhenoBench")
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+from phenobench import PhenoBench
+from phenobench.visualization import draw_semantics
+
+DATA_DIR = os.path.expanduser("./PhenoBench")
 IMAGE_SIZE = (512, 512)
 OUTPUT_CHANNELS = 5
 SKIP_LAYER_NAMES = [
-    "block_1_expand_relu",   # 256x256
-    "block_3_expand_relu",   # 128x128
-    "block_6_expand_relu",   # 64x64
+    "block_1_expand_relu",  # 256x256
+    "block_3_expand_relu",  # 128x128
+    "block_6_expand_relu",  # 64x64
     "block_13_expand_relu",  # 32x32
-    "block_16_project",      # 16x16
+    "block_16_project",  # 16x16
 ]
+
 
 def _iter_samples(data, image_key="image", mask_key="semantics"):
     for idx in range(len(data)):
@@ -25,6 +27,7 @@ def _iter_samples(data, image_key="image", mask_key="semantics"):
         if mask.ndim == 3 and mask.shape[-1] == 1:
             mask = mask[..., 0]
         yield image, mask
+
 
 def _preprocess_sample(image, mask, image_size):
     image = tf.ensure_shape(image, (None, None, 3))
@@ -44,7 +47,7 @@ def create_dataset(
     split="train",
     mask_key="semantics",
     image_size=IMAGE_SIZE,
-    shuffle=False, # TODO: Remember to toggle again after testing
+    shuffle=False,  # TODO: Remember to toggle again after testing
     seed=69,
 ):
     data = PhenoBench(root_dir, split=split, target_types=[mask_key])
@@ -68,6 +71,7 @@ def create_dataset(
     )
     return dataset
 
+
 # From pix2pix, no dropout, batch norm
 def _upsample(filters, size):
     initializer = tf.random_normal_initializer(0.0, 0.02)
@@ -86,13 +90,16 @@ def _upsample(filters, size):
         ]
     )
 
+
 def unet_model(output_channels, image_size=IMAGE_SIZE):
     inputs = tf.keras.layers.Input(shape=(image_size[0], image_size[1], 3))
 
     base_model = tf.keras.applications.MobileNetV2(
         input_shape=(image_size[0], image_size[1], 3), include_top=False
     )
-    base_model_outputs = [base_model.get_layer(name).output for name in SKIP_LAYER_NAMES]
+    base_model_outputs = [
+        base_model.get_layer(name).output for name in SKIP_LAYER_NAMES
+    ]
     down_stack = tf.keras.Model(inputs=base_model.input, outputs=base_model_outputs)
     down_stack.trainable = False
 
@@ -122,12 +129,8 @@ def unet_model(output_channels, image_size=IMAGE_SIZE):
 class Augment(tf.keras.layers.Layer):
     def __init__(self, seed=42):
         super().__init__()
-        self.augment_inputs = tf.keras.layers.RandomFlip(
-            mode="horizontal", seed=seed
-        )
-        self.augment_labels = tf.keras.layers.RandomFlip(
-            mode="horizontal", seed=seed
-        )
+        self.augment_inputs = tf.keras.layers.RandomFlip(mode="horizontal", seed=seed)
+        self.augment_labels = tf.keras.layers.RandomFlip(mode="horizontal", seed=seed)
 
     def call(self, inputs, labels):
         inputs = self.augment_inputs(inputs)
@@ -174,6 +177,7 @@ def create_train_val(
     )
     val = val.batch(batch_size).prefetch(tf.data.AUTOTUNE)
     return train, val
+
 
 def display_training_sample(dataset):
     for image, mask in dataset.take(1):
