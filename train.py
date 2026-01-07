@@ -15,12 +15,15 @@ from load import (
 )
 
 
-TRAIN_SAMPLES = 50
-VAL_SAMPLES = 20
+TRAIN_SAMPLES = 500
+VAL_SAMPLES = 100
 BATCH_SIZE = 4
 EPOCHS = 10
 PREVIEW_DIR = os.path.join(
     "output", f"{datetime.datetime.now():%Y_%m_%d_%H_%M}-preview"
+)
+WEIGHTS_DIR = os.path.join(
+    "weights", f"{datetime.datetime.now():%Y_%m_%d_%H_%M}"
 )
 
 
@@ -100,6 +103,14 @@ def main():
         metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="pixel_acc")],
     )
 
+    os.makedirs(WEIGHTS_DIR, exist_ok=True)
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(
+        filepath=os.path.join(WEIGHTS_DIR, "weights_epoch_{epoch:03d}.weights.h5"),
+        save_weights_only=True,
+        monitor="val_loss",
+        save_best_only=False,
+    )
+
     steps_per_epoch = compute_steps(TRAIN_SAMPLES, BATCH_SIZE)
     validation_steps = compute_steps(VAL_SAMPLES, BATCH_SIZE)
 
@@ -109,7 +120,7 @@ def main():
         steps_per_epoch=steps_per_epoch,
         validation_data=val,
         validation_steps=validation_steps,
-        callbacks=[PreviewCallback(preview_sample, PREVIEW_DIR)],
+        callbacks=[PreviewCallback(preview_sample, PREVIEW_DIR), checkpoint],
         verbose=2,
     )
 
