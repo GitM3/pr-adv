@@ -19,7 +19,7 @@ TRAIN_SAMPLES = 1407
 VAL_SAMPLES = 772
 BATCH_SIZE = 8
 EPOCHS = 30
-PREVIEW_DIR = os8path.join(
+PREVIEW_DIR = os.path.join(
     "output", f"{datetime.datetime.now():%Y_%m_%d_%H_%M}-preview"
 )
 WEIGHTS_DIR = os.path.join(
