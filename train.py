@@ -15,10 +15,10 @@ from load import (
 )
 
 
-TRAIN_SAMPLES = 500
-VAL_SAMPLES = 100
+TRAIN_SAMPLES = 10
+VAL_SAMPLES = 50
 BATCH_SIZE = 4
-EPOCHS = 10
+EPOCHS = 30
 PREVIEW_DIR = os.path.join(
     "output", f"{datetime.datetime.now():%Y_%m_%d_%H_%M}-preview"
 )
@@ -77,6 +77,40 @@ class PreviewCallback(tf.keras.callbacks.Callback):
 def compute_steps(sample_count, batch_size):
     return max(1, math.ceil(sample_count / batch_size))
 
+
+def save_training_curves(history, output_dir):
+    metrics = history.history
+    epochs = range(1, len(metrics.get("loss", [])) + 1)
+    if not epochs:
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    axes[0].plot(epochs, metrics.get("loss", []), label="train")
+    if "val_loss" in metrics:
+        axes[0].plot(epochs, metrics["val_loss"], label="val")
+    axes[0].set_title("Loss")
+    axes[0].set_xlabel("Epoch")
+    axes[0].set_ylabel("Loss")
+    axes[0].legend()
+
+    if "pixel_acc" in metrics or "val_pixel_acc" in metrics:
+        axes[1].plot(epochs, metrics.get("pixel_acc", []), label="train")
+        if "val_pixel_acc" in metrics:
+            axes[1].plot(epochs, metrics["val_pixel_acc"], label="val")
+        axes[1].set_title("Pixel Accuracy")
+        axes[1].set_xlabel("Epoch")
+        axes[1].set_ylabel("Accuracy")
+        axes[1].legend()
+    else:
+        axes[1].axis("off")
+
+    fig.tight_layout()
+    os.makedirs(output_dir, exist_ok=True)
+    path = os.path.join(output_dir, "training_curves.png")
+    fig.savefig(path)
+    plt.close(fig)
+
+
 def main():
     train, val = create_train_val(
         DATA_DIR,
@@ -96,7 +130,7 @@ def main():
         )
     )
 
-    model = unet_model(OUTPUT_CHANNELS, IMAGE_SIZE)
+    model = unet_model(OUTPUT_CHANNELS, IMAGE_SIZE, backbone="mobilenetv3")
     model.compile(
         optimizer="adam",
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
@@ -110,19 +144,26 @@ def main():
         monitor="val_loss",
         save_best_only=False,
     )
+    early_stop = tf.keras.callbacks.EarlyStopping(
+        monitor="val_loss",
+        patience=5,
+        mode="min",
+        restore_best_weights=True,
+    )
 
     steps_per_epoch = compute_steps(TRAIN_SAMPLES, BATCH_SIZE)
     validation_steps = compute_steps(VAL_SAMPLES, BATCH_SIZE)
 
-    model.fit(
+    history = model.fit(
         train,
         epochs=EPOCHS,
         steps_per_epoch=steps_per_epoch,
         validation_data=val,
         validation_steps=validation_steps,
-        callbacks=[PreviewCallback(preview_sample, PREVIEW_DIR), checkpoint],
+        callbacks=[PreviewCallback(preview_sample, PREVIEW_DIR), checkpoint, early_stop],
         verbose=2,
     )
+    save_training_curves(history, PREVIEW_DIR)
 
 
 if __name__ == "__main__":

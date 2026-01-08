@@ -70,7 +70,7 @@ def load_model_from_args(args):
         return tf.keras.models.load_model(args.model)
     if not args.weights:
         raise ValueError("Provide --model or --weights to run validation.")
-    model = unet_model(OUTPUT_CHANNELS, image_size=image_size)
+    model = unet_model(OUTPUT_CHANNELS, image_size=image_size, backbone="mobilenetv3")
     model.load_weights(args.weights)
     return model
 
