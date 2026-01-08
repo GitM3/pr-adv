@@ -16,9 +16,9 @@ from load import (
 
 
 TRAIN_SAMPLES = 10
-VAL_SAMPLES = 10
+VAL_SAMPLES = 50
 BATCH_SIZE = 4
-EPOCHS = 20
+EPOCHS = 30
 PREVIEW_DIR = os.path.join(
     "output", f"{datetime.datetime.now():%Y_%m_%d_%H_%M}-preview"
 )
