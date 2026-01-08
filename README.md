@@ -39,4 +39,6 @@ Semantic metrics:
   # Upgrading to MobileNetV3
   https://ieeexplore.ieee.org/document/9522652
   <img width="820" height="390" alt="image" src="https://github.com/user-attachments/assets/3223227d-056f-4130-8c16-7df070c02427" />
-
+ 1) Used check_model to check outputs at downsampling layers.
+ 2) Match upscaling layers to same spatial resolution. 256->128->64->32->16
+ 3) Normalize input to [-1,1] (Dataset was 0,1)

@@ -10,12 +10,19 @@ from phenobench.visualization import draw_semantics
 DATA_DIR = os.path.expanduser("./PhenoBench")
 IMAGE_SIZE = (512, 512)
 OUTPUT_CHANNELS = 5
-SKIP_LAYER_NAMES = [
-    "block_1_expand_relu",  # 256x256
-    "block_3_expand_relu",  # 128x128
-    "block_6_expand_relu",  # 64x64
-    "block_13_expand_relu",  # 32x32
-    "block_16_project",  # 16x16
+MOBILENETV2_SKIP_LAYER_NAMES = [
+    "block_1_expand_relu",  
+    "block_3_expand_relu", 
+    "block_6_expand_relu",
+    "block_13_expand_relu",
+    "block_16_project", 
+]
+MOBILENETV3_SKIP_LAYER_NAMES = [
+    "activation", 
+    "expanded_conv_project_bn",
+    "expanded_conv_2_add", 
+    "expanded_conv_7_add",
+    "activation_17",
 ]
 
 
@@ -91,14 +98,31 @@ def _upsample(filters, size):
     )
 
 
-def unet_model(output_channels, image_size=IMAGE_SIZE):
+def unet_model(output_channels, image_size=IMAGE_SIZE, backbone="mobilenetv2"):
     inputs = tf.keras.layers.Input(shape=(image_size[0], image_size[1], 3))
 
-    base_model = tf.keras.applications.MobileNetV2(
-        input_shape=(image_size[0], image_size[1], 3), include_top=False
-    )
+    if backbone == "mobilenetv2":
+        base_model = tf.keras.applications.MobileNetV2(
+            input_shape=(image_size[0], image_size[1], 3),
+            include_top=False
+        )
+        skip_layer_names = MOBILENETV2_SKIP_LAYER_NAMES
+        encoder_inputs = inputs
+    elif backbone == "mobilenetv3":
+        base_model = tf.keras.applications.MobileNetV3Small(
+            input_shape=(image_size[0], image_size[1], 3),
+            include_top=False,
+            include_preprocessing=False,
+        )
+        skip_layer_names = MOBILENETV3_SKIP_LAYER_NAMES
+        encoder_inputs = tf.keras.layers.Rescaling(
+            2.0, offset=-1.0, name="mobilenetv3_rescale" # 0,1 to -1,1
+        )(inputs)
+    else:
+        raise ValueError(f"Unsupported backbone: {backbone}") # TODO: try others if there is time
+
     base_model_outputs = [
-        base_model.get_layer(name).output for name in SKIP_LAYER_NAMES
+        base_model.get_layer(name).output for name in skip_layer_names
     ]
     down_stack = tf.keras.Model(inputs=base_model.input, outputs=base_model_outputs)
     down_stack.trainable = False
@@ -110,7 +134,7 @@ def unet_model(output_channels, image_size=IMAGE_SIZE):
         _upsample(64, 3),
     ]
 
-    skips = down_stack(inputs)
+    skips = down_stack(encoder_inputs)
     x = skips[-1]
     skips = reversed(skips[:-1])
 

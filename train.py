@@ -96,7 +96,7 @@ def main():
         )
     )
 
-    model = unet_model(OUTPUT_CHANNELS, IMAGE_SIZE)
+    model = unet_model(OUTPUT_CHANNELS, IMAGE_SIZE, backbone="mobilenetv3")
     model.compile(
         optimizer="adam",
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
@@ -126,4 +126,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(e
