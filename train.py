@@ -15,10 +15,10 @@ from load import (
 )
 
 
-TRAIN_SAMPLES = 50
+TRAIN_SAMPLES = 10
 VAL_SAMPLES = 10
 BATCH_SIZE = 4
-EPOCHS = 3
+EPOCHS = 20
 PREVIEW_DIR = os.path.join(
     "output", f"{datetime.datetime.now():%Y_%m_%d_%H_%M}-preview"
 )
@@ -144,6 +144,12 @@ def main():
         monitor="val_loss",
         save_best_only=False,
     )
+    early_stop = tf.keras.callbacks.EarlyStopping(
+        monitor="val_loss",
+        patience=5,
+        mode="min",
+        restore_best_weights=True,
+    )
 
     steps_per_epoch = compute_steps(TRAIN_SAMPLES, BATCH_SIZE)
     validation_steps = compute_steps(VAL_SAMPLES, BATCH_SIZE)
@@ -154,7 +160,7 @@ def main():
         steps_per_epoch=steps_per_epoch,
         validation_data=val,
         validation_steps=validation_steps,
-        callbacks=[PreviewCallback(preview_sample, PREVIEW_DIR), checkpoint],
+        callbacks=[PreviewCallback(preview_sample, PREVIEW_DIR), checkpoint, early_stop],
         verbose=2,
     )
     save_training_curves(history, PREVIEW_DIR)
