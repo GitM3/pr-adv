@@ -227,3 +227,6 @@ if __name__ == "__main__":
     display_training_sample(dataset)
     model = unet_model(OUTPUT_CHANNELS, IMAGE_SIZE)
     model.summary()
+    tf.keras.utils.plot_model(model, to_file="./figures/model_v3.png", show_layer_names=True,)
+
+
