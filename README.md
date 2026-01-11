@@ -1,4 +1,4 @@
-# Goal: PhenoBench Semantic Segmentation for plants and weeds.
+# PhenoBench Semantic Segmentation for plants and weeds.
 ![Epoch 16 preview](figures/epoch_016.png)
 ## Overview
 This project implements a TensorFlow U-Net for semantic leaf segmentation on [PhenoBench](https://www.phenobench.org/benchmarks.html) dataset
@@ -15,20 +15,23 @@ Since the model follows UNet architecture, skip connections are made at downsamp
 
   <img width="820" height="390" alt="image" src="https://github.com/user-attachments/assets/3223227d-056f-4130-8c16-7df070c02427" />
 
+In the model image above, the functional layer correspond to the back bone and each sequential layer correspond to an upsampling block. 
+
 The upsampling blocks uses transposed convolution, batch-norm and then ReLu based on pix2pix suggested in the tutorial.
 
-Finally for validation, the phenobench requires converting the predicted mask to a specific format and saved in a prediction directory that the devkit then uses to calculate validation metrics. 
+For multi-class semantic segmentation, the loss must compare per-pixel class probabilities against integer labels so the network learns to separate crop and weed pixels from soil/background thus categorical cross-entropy is used, specifically `SparseCategoricalCrossentropy(from_logits=True)` because the model outputs raw logits and the ground-truth masks store integer class ids.  However since there can be issues of class imbalance (dominant soil vs. smaller weed regions) biasing learning, potential future improvements include class weighting, focal loss, or resampling. However, for this project the above was used to keep it simple.
 
-The PhenoBench evaluation uses per-class Intersection-over-Union (IoU) for soil, crop, and weed, plus mean IoU (mIoU). Scores are reported as percentages.
-```math
-IoU_c = \\frac{|P_c \\cap G_c|}{|P_c \\cup G_c|} = \\frac{TP_c}{TP_c + FP_c + FN_c}
-```
+## Training Approach
+The Adam optimizer is used with default hyperparameters with a batch size of 8 samples. Some light augmentation was done with horizontal flips to improve generalization without heavy compute overhead, leaving additional augmentation for future development.
 
-```math
-mIoU = \\frac{1}{C} \\sum_{c=1}^{C} IoU_c
-```
+An early stopping monitors the validation loss  and if it does not improve over 5 epochs, then training is stopped. Checkpoints save per-epoch weights for progress capture but also letting me choose the better weights after training and investigating the training vs validation loss graph.
 
-Where `P_c` and `G_c` are the predicted and ground-truth pixels for class `c`, and `C=3` for soil, crop, weed.
+Finally for validation, the PhenoBench devkit expects masks in a specific folder layout, so predictions are written to images and then the official evaluator is called to compute metrics.
+
+## Validation Metrics (IoU)
+For each class `c`, `IoU_c = |P_c ∩ G_c| / |P_c ∪ G_c| = TP_c / (TP_c + FP_c + FN_c)` where `P_c` are predicted pixels and `G_c` are ground-truth pixels. PhenoBench also uses mean IoU: `mIoU = (1/C) * Σ IoU_c` over the evaluated classes.
+
+High soil IoU indicates the model segments background reliably; lower weed and plant IoU reflects the challenge of segmenting small, sparse, and heterogeneous regions accurately.
 ## Results
 The training curves show training and validation loss decreasing overall. Training pixel accuracy decreases while validation pixel accuracy increases.
 
@@ -58,8 +61,21 @@ This project's model performs worse when compared to the model implemented by th
  soil: 99.28
  crop: 94.30
  weed: 64.37
- mIoU: 85.97
+mIoU: 85.97
+
 ```
+## Code Execution
+The following serves as brief instruction to run this project locally.
+1. Install dependencies: `pip install "numpy matplotlib tensorflow phenobench phenobench[eval]"
+2. Download the PhenoBench [dataset](https://www.phenobench.org/dataset.html) 3. Copy dataset to project folder or change data directory in `load.py`
+4. Adjust training parameters in `train.py` if needed and then run `python train.py`.
+5. After training, use checkpoint weights `python validate.py  --weights weights/2026_01_07_11_17/weights_epoch_010.weights.h5` and check results.
+
+## Future Work
+- Altough this project implements cross-entropy, another approach could be to add class weights or focal loss to counter soil dominance and improve weed recall without hurting crop precision.
+- Since the results above showed how augmentation improves results, expanding augmentation (color jitter, small rotations, scale jitter, CutMix/MixUp for masks) and consider oversampling weed-heavy images could improve performance.
+- Lastly, further training improvements could be to unfreeze the backbone in later stages for fine-tuning. This could improve the model's ability to generalize better over the PhenoBench dataset. 
+
 ## Sources
 - PhenoBench benchmark: https://www.phenobench.org/benchmarks.html
 - PhenoBench tutorial notebook: https://github.com/PRBonn/phenobench/blob/main/phenobench_tutorial.ipynb
