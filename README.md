@@ -29,11 +29,11 @@ An early stopping monitors the validation loss  and if it does not improve over 
 Finally for validation, the PhenoBench devkit expects masks in a specific folder layout, so predictions are written to images and then the official evaluator is called to compute metrics.
 
 ## Validation Metrics (IoU)
-For each class `c`, `IoU_c = |P_c ∩ G_c| / |P_c ∪ G_c| = TP_c / (TP_c + FP_c + FN_c)` where `P_c` are predicted pixels and `G_c` are ground-truth pixels. PhenoBench also uses mean IoU: `mIoU = (1/C) * Σ IoU_c` over the evaluated classes.
+For each class `c`, `IoU_c = |P_c ∩ G_c| / |P_c ∪ G_c| = TP_c / (TP_c + FP_c + FN_c)` where `P_c` are predicted pixels and `G_c` are ground-truth pixels and `TP` and `FN` are true positives and false negatives respectively. PhenoBench also uses mean IoU: `mIoU = (1/C) * Σ IoU_c` over the evaluated classes. Pixel accuracy is also used and is just the ratio of true positives to the total pixel count. 
 
 High soil IoU indicates the model segments background reliably; lower weed and plant IoU reflects the challenge of segmenting small, sparse, and heterogeneous regions accurately.
 ## Results
-The training curves show training and validation loss decreasing overall. Training pixel accuracy decreases while validation pixel accuracy increases.
+The training curves show training and validation loss decreasing across epochs. Training pixel accuracy increases, but at some point validation accuracy decreases altough loss decreases. This could indicate the cost of improved generalisation.
 
 ![Training curves](figures/training_curves.png)
 
@@ -66,8 +66,9 @@ mIoU: 85.97
 ```
 ## Code Execution
 The following serves as brief instruction to run this project locally.
-1. Install dependencies: `pip install "numpy matplotlib tensorflow phenobench phenobench[eval]"
-2. Download the PhenoBench [dataset](https://www.phenobench.org/dataset.html) 3. Copy dataset to project folder or change data directory in `load.py`
+1. Install dependencies: `pip install "numpy matplotlib tensorflow phenobench phenobench[eval]"`
+2. Download the PhenoBench [dataset](https://www.phenobench.org/dataset.html) 
+3. Copy dataset to project folder or change data directory in `load.py`
 4. Adjust training parameters in `train.py` if needed and then run `python train.py`.
 5. After training, use checkpoint weights `python validate.py  --weights weights/2026_01_07_11_17/weights_epoch_010.weights.h5` and check results.
 
